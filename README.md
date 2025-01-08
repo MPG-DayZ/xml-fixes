@@ -1,8 +1,9 @@
-# xml-fides
+# xml-fixes
 
 ## Контактная информация:
 
 - Дискорд: https://discord.gg/pww4zwz6rM
+- Гитхаб: https://github.com/MPG-DayZ/xml-fixes
 
 ## Этот скрипт актуален для патча 1.26
 
