@@ -26,7 +26,7 @@ const getDirectories = (path) => {
       return fs.statSync(path + '/' + file).isDirectory();
     });
   } catch (e) {
-    console.log('  ОШИБКА! Разместите папку xml-fixes в корне сервера');
+    console.log('  ОШИБКА! Разместите папку xml-fixes рядом с папкой mpmissions');
     console.log('  Нажмите любую кнопку для закрытия консоли');
     return [];
   }
@@ -288,6 +288,7 @@ const runFixes = (config) => {
       let totalTypesCount = 0;
       let totalFiles = -1;
       let incorrectMinCount = 0;
+      let incorrectRestockCount = 0;
 
       typesFiles.forEach((file) => {
         const filePath = resolve(root, file);
@@ -330,12 +331,13 @@ const runFixes = (config) => {
                       return item.name === 'min';
                     });
 
+                    const restock = element?.elements?.find((item) => {
+                      return item.name === 'restock';
+                    });
+
                     // Проверяем, что номинал не меньше минимального
                     if (min) {
                       if (min.elements[0].text * 1 > nominal.elements[0].text * 1) {
-                        if (element.attributes.name === 'CodeLock') {
-                          console.log('1:', element.elements[3]);
-                        }
                         element.elements = element.elements.map((el) => {
                           if (el.name === 'min') {
                             incorrectData = true;
@@ -353,10 +355,34 @@ const runFixes = (config) => {
                           }
                           return el;
                         });
+                      }
+                    }
 
-                        if (element.attributes.name === 'CodeLock') {
-                          console.log('2:', element.elements[3]);
-                        }
+                    // Исправляем некорректные записи restock
+                    if(restock) {
+                      const lifetime = element?.elements?.find((item) => {
+                        return item.name === 'lifetime';
+                      });
+                      const calculatedRestock = (lifetime.elements[0].text * 1)/(nominal.elements[0].text * 1);
+                      const intRestock = restock.elements[0].text * 1;
+                      if (intRestock > 1 && calculatedRestock > 1 && calculatedRestock <= intRestock) {
+                        element.elements = element.elements.map((el) => {
+                          if (el.name === 'restock') {
+                            incorrectData = true;
+                            incorrectRestockCount++;
+                            el = {
+                              type: 'element',
+                              name: 'restock',
+                              elements: [
+                                {
+                                  type: 'text',
+                                  text: Math.round(calculatedRestock) - 1
+                                }
+                              ]
+                            };
+                          }
+                          return el;
+                        });
                       }
                     }
                   }
@@ -437,6 +463,7 @@ const runFixes = (config) => {
       console.log('  Всего найдено нулевых записей:', zeroTypes.length);
       console.log('  Из них исправлено:', totalModdedCount);
       console.log('  Исправлено некорректных значений <min>:', incorrectMinCount);
+      console.log('  Исправлено некорректных значений <restock>:', incorrectRestockCount);
 
       if (totalTypesCount > 0) {
         const convertedDataTypes = convert.js2xml(typesJs, {
