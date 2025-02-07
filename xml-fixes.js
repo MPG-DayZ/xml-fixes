@@ -6,19 +6,8 @@
 const prompts = require('prompts');
 const convert = require('xml-js');
 const fs = require('fs');
-const {
-  resolve,
-  basename
-} = require('path');
-
-const sleep = () => {
-  console.log(`
-  
-  Консоль будет закрыта через 20 сек.
-  ===================================
-  `);
-  setTimeout(() => {}, 20000);
-};
+const {resolve} = require('path');
+const runCheckTrader = require('./checkTrader');
 
 const getDirectories = (path) => {
   try {
@@ -120,6 +109,21 @@ const questions = [
         title: 'Да'
       }
     ]
+  },
+  {
+    type: 'select',
+    name: 'checkTraderFiles',
+    message: 'Проверить корректность конфигов трейдера?',
+    choices: [
+      {
+        value: true,
+        title: 'Да'
+      },
+      {
+        value: false,
+        title: 'Нет'
+      }
+    ]
   }
 ];
 
@@ -198,9 +202,9 @@ const runFixes = (config) => {
 
       try {
         fs.writeFileSync(typesPath, replacedXml);
-        console.log('  Файл types.xml исправлен');
+        console.log(' Файл types.xml исправлен');
       } catch (e) {
-        console.log('  ОШИБКА! Файл types.xml НЕ исправлен');
+        console.log(' ОШИБКА! Файл types.xml НЕ исправлен');
       }
     }
     if (config.fixes.includes('empty nominals')) {
@@ -290,7 +294,9 @@ const runFixes = (config) => {
       let incorrectMinCount = 0;
       let incorrectRestockCount = 0;
 
-      typesFiles.forEach((file) => {
+      const typesLog = {};
+
+      typesFiles.forEach((file, index) => {
         const filePath = resolve(root, file);
         let count = 0;
         let incorrectData = false;
@@ -359,11 +365,11 @@ const runFixes = (config) => {
                     }
 
                     // Исправляем некорректные записи restock
-                    if(restock) {
+                    if (restock) {
                       const lifetime = element?.elements?.find((item) => {
                         return item.name === 'lifetime';
                       });
-                      const calculatedRestock = (lifetime.elements[0].text * 1)/(nominal.elements[0].text * 1);
+                      const calculatedRestock = (lifetime.elements[0].text * 1) / (nominal.elements[0].text * 1);
                       const intRestock = restock.elements[0].text * 1;
                       if (intRestock > 1 && calculatedRestock > 1 && calculatedRestock <= intRestock) {
                         element.elements = element.elements.map((el) => {
@@ -431,7 +437,7 @@ const runFixes = (config) => {
               return element;
             });
           } else {
-            console.log(`  ВНИМАНИЕ! Проверьте корректность файла ${file}. В начале файла не должно быть комментариев или других блоков, отличный от types`);
+            console.log(` ВНИМАНИЕ! Проверьте корректность файла ${file}. В начале файла не должно быть комментариев или других блоков, отличный от types`);
           }
 
           totalModdedCount += count;
@@ -443,9 +449,14 @@ const runFixes = (config) => {
             });
             try {
               fs.writeFileSync(filePath, convertedData);
-              console.log(`  Файл ${file} исправлен. Исправлено класснеймов: ${count}`);
+              if (index === 0) {
+                typesLog['types.xml'] = count;
+              } else {
+                typesLog[file] = count;
+              }
             } catch (e) {
-              console.log(`  ОШИБКА! Файл ${file} НЕ исправлен.`);
+              console.log(` ОШИБКА! Файл ${file} НЕ исправлен.`);
+              typesLog[file] = 'Не исправлен';
             }
           } else {
             totalFiles--;
@@ -454,16 +465,18 @@ const runFixes = (config) => {
         } catch (e) {
           totalFiles--;
           console.log(e);
-          console.log(`  Файл ${filePath} не найден`);
+          console.log(` Файл ${filePath} не найден`);
         }
 
       });
 
-      console.log('\n  Всего модовых файлов исправлено:', totalFiles, 'из', typesFiles.length - 1);
-      console.log('  Всего найдено нулевых записей:', zeroTypes.length);
-      console.log('  Из них исправлено:', totalModdedCount);
-      console.log('  Исправлено некорректных значений <min>:', incorrectMinCount);
-      console.log('  Исправлено некорректных значений <restock>:', incorrectRestockCount);
+      console.log('\n Всего модовых файлов исправлено:', totalFiles, 'из', typesFiles.length - 1);
+
+      console.table(typesLog);
+
+      console.log(' Всего найдено нулевых записей исправлено:', zeroTypes.length, 'из', totalModdedCount);
+      console.log(' Исправлено некорректных значений <min>:', incorrectMinCount);
+      console.log(' Исправлено некорректных значений <restock>:', incorrectRestockCount, '\n');
 
       if (totalTypesCount > 0) {
         const convertedDataTypes = convert.js2xml(typesJs, {
@@ -473,9 +486,9 @@ const runFixes = (config) => {
 
         try {
           fs.writeFileSync(typesPath1, convertedDataTypes);
-          console.log('  Файл types.xml исправлены нулевые записи');
+          console.log(' Файл types.xml исправлены нулевые записи');
         } catch (e) {
-          console.log('  ОШИБКА! Файл types.xml нулевые записи НЕ исправлены');
+          console.log(' ОШИБКА! Файл types.xml нулевые записи НЕ исправлены');
         }
       }
     }
@@ -538,7 +551,7 @@ const runFixes = (config) => {
 
       try {
         fs.writeFileSync(mapgroupprotoPath, xmlConverted);
-        console.log('  Файл mapgroupproto.xml исправлен');
+        console.log(' Файл mapgroupproto.xml исправлен');
       } catch (e) {
         console.log('  ОШИБКА! Файл mapgroupproto.xml НЕ исправлен');
       }
@@ -552,13 +565,16 @@ const runFixes = (config) => {
 
       try {
         fs.writeFileSync(cfgeventgroupsPath, replacedCfgeventgroupsXml);
-        console.log('  Файл cfgeventgroups.xml исправлен');
+        console.log(' Файл cfgeventgroups.xml исправлен');
       } catch (e) {
-        console.log('  ОШИБКА! Файл cfgeventgroups.xml НЕ исправлен');
+        console.log(' ОШИБКА! Файл cfgeventgroups.xml НЕ исправлен');
       }
     }
 
-    sleep();
+    if (config.checkTraderFiles) {
+      const profilePath = resolve(__dirname, '..', config.profileFolder);
+      runCheckTrader(root, profilePath).catch(console.error);
+    }
   }
 
 };
