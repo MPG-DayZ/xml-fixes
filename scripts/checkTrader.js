@@ -304,7 +304,7 @@ const runCheckTrader = async (missionPath = '', profilePath = '') => {
 
     // Запись результатов в файл
     try {
-      await fs.writeFile(path.resolve(__dirname, 'checkTrader.json'), JSON.stringify(typesOutput, null, 2));
+      await fs.writeFile(path.resolve(__dirname, '..', 'checkTrader.json'), JSON.stringify(typesOutput, null, 2));
       console.log('\n ====================================');
       console.log('\tФайл checkTrader.json создан');
     } catch (e) {
@@ -316,4 +316,4 @@ const runCheckTrader = async (missionPath = '', profilePath = '') => {
   }
 ;
 
-module.exports = runCheckTrader;
+module.exports = {runCheckTrader};

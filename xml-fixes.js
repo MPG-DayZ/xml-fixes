@@ -7,7 +7,7 @@ const prompts = require('prompts');
 const convert = require('xml-js');
 const fs = require('fs');
 const {resolve} = require('path');
-const runCheckTrader = require('./checkTrader');
+const {runCheckTrader} = require('./scripts/checkTrader');
 
 const getDirectories = (path) => {
   try {
@@ -40,28 +40,10 @@ const objectP = {
   type: 'select',
   name: 'profileFolder',
   message: 'Выберите папку с профилем',
-  choices: getDirectories(resolve(__dirname, '..')).map((object) => {
-    return {value: object};
-  }).filter((item) => {
-    return !(
-      item.value.startsWith('.')
-      || item.value.startsWith('@')
-      || item.value.startsWith('addons')
-      || item.value.startsWith('appcache')
-      || item.value.startsWith('battleye')
-      || item.value.startsWith('bliss')
-      || item.value.startsWith('config')
-      || item.value.startsWith('docs')
-      || item.value.startsWith('dta')
-      || item.value.startsWith('keys')
-      || item.value.startsWith('logs')
-      || item.value.startsWith('mpmissions')
-      || item.value.startsWith('node_modules')
-      || item.value.startsWith('server_manager')
-      || item.value.startsWith('Statistics')
-      || item.value.startsWith('steamapps')
-    );
-  }),
+  choices: getDirectories(resolve(__dirname, '..')).map((object) => ({value: object}))
+    .filter((item) => {
+      return !item.value.match(/^(\.|@|addons|appcache|battleye|bliss|config|docs|dta|keys|logs|mpmissions|node_modules|server_manager|Statistics|steamapps)/);
+    }),
   hint: `
   Инструкция:
     ↑/↓: Навигация по пунктам
